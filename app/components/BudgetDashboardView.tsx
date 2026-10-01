@@ -47,7 +47,6 @@ type Props = {
   onShowMore: () => void;
   treemapMode: boolean;
   onTreemapModeChange: (value: boolean) => void;
-  topPlans: RankedRow[];
   planRows: RankedRow[];
   visiblePlanCount: number;
   allPlansCount: number;
@@ -55,7 +54,6 @@ type Props = {
   planTypeOptions: string[];
   selectedPlanType: string;
   onPlanTypeChange: (value: string) => void;
-  topUnits: RankedRow[];
   unitRows: RankedRow[];
   unitCount: number;
   selectedUnit: { id: number; name: string; amount: number } | null;
@@ -133,22 +131,38 @@ export default function BudgetDashboardView(props: Props) {
             </>}
             <div className="cross-link">แสดงสัดส่วนจากรายการระดับรากและความสัมพันธ์ parent-child ในพระราชบัญญัติ</div>
           </section>
-
-          <div className="report-columns">
-            <section className="ranked-section"><h2>แผนงานยอดสูงสุด 10 อันดับ</h2><RankedTable rows={props.topPlans} totalCount={props.allPlansCount} totalAmount={props.planCoverageAmount} onSelect={(row) => props.onSelectPlan(row.id)} compact showFooter={false} /><button className="plain-link" type="button" onClick={() => props.onViewChange("plans")}>ดูแผนงานทั้งหมด</button></section>
-            <section><h2 className="definition-heading">ตัวเลขสำคัญ</h2><dl className="definition-list"><div className="definition-row"><dt>หน่วยรับงบประมาณ</dt><dd>{props.receiverCount.toLocaleString("th-TH")}</dd></div><div className="definition-row"><dt>แผนงาน</dt><dd>{props.allPlansCount.toLocaleString("th-TH")}</dd></div><div className="definition-row"><dt>อปท. ในโครงสร้าง</dt><dd>{props.localGovCount.toLocaleString("th-TH")}</dd></div></dl><p className="stacked-label">สัดส่วนงบตามประเภทแผน</p><div className="stacked-plan-band" role="img" aria-label="สัดส่วนประเภทงบแผนงาน">{props.planTypeShares.map((item) => <i key={item.id} title={`${item.label} ${item.amount.toLocaleString("th-TH")} บาท`} style={{ width: `${props.planCoverageAmount ? item.amount / props.planCoverageAmount * 100 : 0}%`, background: item.color }} />)}</div><div className="stacked-legend">{props.planTypeShares.map((item) => <span key={item.id}><i style={{ background: item.color }} />{item.label}</span>)}</div><p className="stacked-plan-note">นับเฉพาะวงเงินที่เชื่อมผ่านแผนงาน</p></section>
-          </div>
-
-          <section className="section-block ranked-section"><h2>หน่วยงานยอดสูงสุด 10 อันดับ</h2><RankedTable rows={props.topUnits} totalCount={props.unitCount} totalAmount={props.totalAmount} onSelect={(row) => props.onSelectUnit(row.id)} compact showFooter={false} /></section>
         </>}
 
         {props.view === "plans" && <>
           <div className="view-tabs"><button type="button" aria-pressed={activeView === "overview"} onClick={() => props.onViewChange("overview")}>ภาพรวม</button><button type="button" aria-pressed={activeView === "plans"} onClick={() => props.onViewChange("plans")}>แผนงาน</button><button type="button" aria-pressed={activeView === "units"} onClick={() => props.onViewChange("units")}>หน่วยงาน</button></div>
+          <section className="section-block">
+            <h2 className="definition-heading">ตัวเลขสำคัญ</h2>
+            <dl className="definition-list">
+              <div className="definition-row"><dt>หน่วยรับงบประมาณ</dt><dd>{props.receiverCount.toLocaleString("th-TH")}</dd></div>
+              <div className="definition-row"><dt>แผนงาน</dt><dd>{props.allPlansCount.toLocaleString("th-TH")}</dd></div>
+              <div className="definition-row"><dt>อปท. ในโครงสร้าง</dt><dd>{props.localGovCount.toLocaleString("th-TH")}</dd></div>
+            </dl>
+            <div className="stacked-plan-block">
+              <p className="stacked-label">สัดส่วนงบตามประเภทแผนงาน <span>(ภายในยอดที่ผ่านแผนงาน)</span></p>
+              <div className="stacked-plan-band" role="img" aria-label="สัดส่วนประเภทงบแผนงาน">{props.planTypeShares.map((item) => <i key={item.id} title={`${item.label} ${item.amount.toLocaleString("th-TH")} บาท`} style={{ width: `${props.planCoverageAmount ? item.amount / props.planCoverageAmount * 100 : 0}%`, background: item.color }} />)}</div>
+              <div className="stacked-legend">{props.planTypeShares.map((item) => <span key={item.id}><i style={{ background: item.color }} />{item.label}<b>{props.planCoverageAmount ? (item.amount / props.planCoverageAmount * 100).toFixed(1) : "0.0"}%</b></span>)}</div>
+              <p className="stacked-plan-note">นับเฉพาะวงเงินที่เชื่อมผ่านแผนงาน ({props.totalAmount ? (props.planCoverageAmount / props.totalAmount * 100).toFixed(1) : "0.0"}% ของงบรวมทั้งหมด)</p>
+            </div>
+          </section>
           <div className="filter-chips" role="group" aria-label="กรองตามประเภทแผน"><button type="button" aria-pressed={props.selectedPlanType === "ทั้งหมด"} onClick={() => props.onPlanTypeChange("ทั้งหมด")}>ทั้งหมด</button>{props.planTypeOptions.map((type) => <button type="button" key={type} aria-pressed={props.selectedPlanType === type} onClick={() => props.onPlanTypeChange(type)}>{planTypeLabels[type] ?? type}</button>)}</div>
-          <div className="report-columns plan-report-columns">
-            <section className="ranked-section"><div className="section-heading"><h2>แผนงาน</h2><p>{props.visiblePlanCount.toLocaleString("th-TH")} จาก {props.allPlansCount.toLocaleString("th-TH")}</p></div>{props.loading ? <LoadingRows /> : <RankedTable rows={props.planRows} totalCount={props.visiblePlanCount} totalAmount={props.planCoverageAmount} onSelect={(row) => props.onSelectPlan(row.id)} compact showFooter={false} emptyText="ไม่พบแผนงานที่ตรงกับตัวกรอง" onClearSearch={props.query ? () => props.onQueryChange("") : undefined} highlightQuery={props.query} />}</section>
-            <section className="plan-recipient-section">{props.selectedPlan ? <NodeHeader title={props.selectedPlan.name} typeLabel="แผนงาน" amount={props.selectedPlan.amount} parentAmount={props.totalAmount} totalAmount={props.totalAmount} categoryColor={props.selectedPlan.color} /> : <div className="empty-message">เลือกแผนงานเพื่อดูผู้รับงบ</div>}<div className="section-heading"><h2>หน่วยรับภายใต้แผนงาน</h2><p>วงเงินรวม {props.selectedPlan ? shortMoney(props.selectedPlan.amount).value : "0"} {props.selectedPlan ? shortMoney(props.selectedPlan.amount).unit : "บาท"}</p></div><div className="report-filter"><label className="report-search"><Search size={16} /><input value={props.recipientQuery} onChange={(event) => props.onRecipientQueryChange(event.target.value)} placeholder="ค้นหาหน่วยรับงบประมาณ" /></label><span className="data-status"><i />{props.recipientCount.toLocaleString("th-TH")} หน่วยรับ</span></div>{props.loading ? <LoadingRows /> : <RankedTable rows={props.planRecipients} totalCount={props.recipientCount} totalAmount={props.selectedPlan?.amount ?? 0} onSelect={(row) => props.onSelectUnit(row.id)} onShowMore={props.onRecipientShowMore} hasMore={props.recipientHasMore} emptyText={props.recipientQuery ? `ไม่พบรายการที่ตรงกับ “${props.recipientQuery}”` : "ไม่พบหน่วยรับในแผนนี้"} onClearSearch={props.recipientQuery ? () => props.onRecipientQueryChange("") : undefined} />}</section>
-          </div>
+
+          <section className="section-block ranked-section">
+            <div className="section-heading"><h2>แผนงาน</h2><p>{props.visiblePlanCount.toLocaleString("th-TH")} จาก {props.allPlansCount.toLocaleString("th-TH")}</p></div>
+            {props.loading ? <LoadingRows /> : <RankedTable rows={props.planRows} totalCount={props.visiblePlanCount} totalAmount={props.planCoverageAmount} onSelect={(row) => props.onSelectPlan(row.id)} emptyText="ไม่พบแผนงานที่ตรงกับตัวกรอง" onClearSearch={props.query ? () => props.onQueryChange("") : undefined} highlightQuery={props.query} />}
+          </section>
+
+          <section className="section-block zone-divider">
+            {props.selectedPlan ? <NodeHeader title={props.selectedPlan.name} typeLabel="แผนงาน" amount={props.selectedPlan.amount} parentAmount={props.totalAmount} totalAmount={props.totalAmount} categoryColor={props.selectedPlan.color} /> : <div className="empty-message">เลือกแผนงานจากตารางด้านบนเพื่อดูผู้รับงบ</div>}
+            <div className="section-heading"><h2>หน่วยรับภายใต้แผนงาน</h2><p>วงเงินรวม {props.selectedPlan ? shortMoney(props.selectedPlan.amount).value : "0"} {props.selectedPlan ? shortMoney(props.selectedPlan.amount).unit : "บาท"}</p></div>
+            <div className="report-filter"><label className="report-search"><Search size={16} /><input value={props.recipientQuery} onChange={(event) => props.onRecipientQueryChange(event.target.value)} placeholder="ค้นหาหน่วยรับงบประมาณ" /></label><span className="data-status"><i />{props.recipientCount.toLocaleString("th-TH")} หน่วยรับ</span></div>
+            {props.loading ? <LoadingRows /> : <RankedTable rows={props.planRecipients} totalCount={props.recipientCount} totalAmount={props.selectedPlan?.amount ?? 0} onSelect={(row) => props.onSelectUnit(row.id)} onShowMore={props.onRecipientShowMore} hasMore={props.recipientHasMore} emptyText={props.recipientQuery ? `ไม่พบรายการที่ตรงกับ “${props.recipientQuery}”` : "ไม่พบหน่วยรับในแผนนี้"} onClearSearch={props.recipientQuery ? () => props.onRecipientQueryChange("") : undefined} />}
+          </section>
+
           <p className="cross-link">วงเงินในแผน {shortMoney(props.planCoverageAmount).value} {shortMoney(props.planCoverageAmount).unit} จากยอดรวม {shortMoney(props.totalAmount).value} {shortMoney(props.totalAmount).unit}</p>
         </>}
 

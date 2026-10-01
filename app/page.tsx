@@ -160,10 +160,8 @@ export default function Dashboard() {
     agencyGroups.set(leaf.entity_id, entry);
   }
   const unitBaseRows: RankedRow[] = [...agencyGroups.values()].sort((a, b) => b.amount - a.amount).map((unit, index) => ({ id: unit.id, label: String(index + 1), name: unit.name, typeLabel: "หน่วยงาน", amount: unit.amount, share: rootTotal ? unit.amount / rootTotal * 100 : 0, childCount: unit.rows, computed: false, color: categoryColor("receiving"), path: unit.path }));
-  const topUnitRows = unitBaseRows.slice(0, 10);
   const unitRows = unitBaseRows.filter((unit) => unit.name.toLocaleLowerCase("th").includes(query.toLocaleLowerCase("th"))).slice(0, drillLimit);
   const planToRankedRow = (plan: PlanSummary, index: number): RankedRow => ({ id: plan.id, label: String(index + 1), name: plan.name, typeLabel: typeLabels[plan.planType] ?? "แผนงาน", amount: plan.amount, share: rootTotal ? plan.amount / rootTotal * 100 : 0, childCount: plan.recipients.size, computed: true, color: planColor(plan.planType), path: plan.path });
-  const topPlanRows: RankedRow[] = plans.slice(0, 10).map(planToRankedRow);
   const matchingPlanRows: RankedRow[] = matchingPlans.map(planToRankedRow);
   const recipientRankRows: RankedRow[] = visibleRecipients.map((unit, index) => ({ id: unit.id, label: String(index + 1), name: unit.name, typeLabel: "หน่วยรับงบประมาณ", amount: unit.amount, share: selectedPlan?.amount ? unit.amount / selectedPlan.amount * 100 : 0, childCount: unit.rows, computed: false, color: planColor("strategic") }));
   const selectedPlanView = selectedPlan ? { id: selectedPlan.id, name: selectedPlan.name, amount: selectedPlan.amount, color: planColor(selectedPlan.planType) } : null;
@@ -234,7 +232,6 @@ export default function Dashboard() {
       onShowMore={() => setDrillLimit(drillLimit + 100)}
       treemapMode={treemapMode}
       onTreemapModeChange={setTreemapMode}
-      topPlans={topPlanRows}
       planRows={matchingPlanRows}
       visiblePlanCount={matchingPlanRows.length}
       allPlansCount={plans.length}
@@ -242,7 +239,6 @@ export default function Dashboard() {
       planTypeOptions={planFilterOptions}
       selectedPlanType={planTypeFilter}
       onPlanTypeChange={(value) => { setPlanTypeFilter(value); setSelectedPlanId(null); }}
-      topUnits={topUnitRows}
       unitRows={unitRows}
       unitCount={agencyGroups.size}
       selectedUnit={selectedUnit}

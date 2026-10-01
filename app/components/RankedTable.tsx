@@ -1,5 +1,7 @@
 "use client";
 
+import { useMemo, useState } from "react";
+
 export type RankedRow = {
   id: string | number;
   label: string;
@@ -27,6 +29,9 @@ type Props = {
   highlightQuery?: string;
 };
 
+type SortKey = "label" | "name" | "share" | "amount" | "childCount";
+type SortState = { key: SortKey; dir: "asc" | "desc" };
+
 const number = new Intl.NumberFormat("th-TH", { maximumFractionDigits: 0 });
 
 function moneyScale(maxValue: number) {
@@ -36,7 +41,16 @@ function moneyScale(maxValue: number) {
   return { divisor: 1, unit: "บาท" };
 }
 
+function compareRows(a: RankedRow, b: RankedRow, key: SortKey) {
+  if (key === "name") return a.name.localeCompare(b.name, "th");
+  if (key === "label") return a.label.localeCompare(b.label, "th", { numeric: true });
+  const left = key === "childCount" ? a.childCount ?? 0 : a[key];
+  const right = key === "childCount" ? b.childCount ?? 0 : b[key];
+  return left - right;
+}
+
 export default function RankedTable({ rows, totalCount, totalAmount, onSelect, onShowMore, hasMore = false, compact = false, showFooter = true, emptyText = "ไม่พบรายการ", onClearSearch, highlightQuery = "" }: Props) {
+  const [sort, setSort] = useState<SortState | null>(null);
   const scale = moneyScale(totalAmount || Math.max(0, ...rows.map((row) => row.amount)));
   const displayMoney = (value: number) => scale.divisor === 1 ? number.format(value) : (value / scale.divisor).toFixed(2);
   const highlight = (text: string) => {
@@ -44,12 +58,48 @@ export default function RankedTable({ rows, totalCount, totalAmount, onSelect, o
     const escaped = highlightQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     return text.split(new RegExp(`(${escaped})`, "ig")).map((part, index) => part.toLocaleLowerCase("th") === highlightQuery.toLocaleLowerCase("th") ? <mark key={index}>{part}</mark> : part);
   };
+  const displayRows = useMemo(() => {
+    if (!sort) return rows;
+    const sorted = [...rows].sort((a, b) => compareRows(a, b, sort.key));
+    return sort.dir === "asc" ? sorted : sorted.reverse();
+  }, [rows, sort]);
+
+  function toggleSort(key: SortKey) {
+    setSort((current) => {
+      if (!current || current.key !== key) return { key, dir: key === "name" || key === "label" ? "asc" : "desc" };
+      return { key, dir: current.dir === "asc" ? "desc" : "asc" };
+    });
+  }
+
+  function ariaSortFor(key: SortKey): "ascending" | "descending" | "none" {
+    if (sort?.key !== key) return "none";
+    return sort.dir === "asc" ? "ascending" : "descending";
+  }
+
+  function SortHeader({ children, sortKey }: { children: React.ReactNode; sortKey: SortKey }) {
+    const active = sort?.key === sortKey;
+    return (
+      <button type="button" className={`ranked-sort-btn ${active ? "is-active" : ""}`} onClick={() => toggleSort(sortKey)} aria-label={`เรียงตาม${children}`}>
+        <span>{children}</span>
+        <i className="ranked-sort-icon" aria-hidden="true">{active ? (sort.dir === "asc" ? "▲" : "▼") : "↕"}</i>
+      </button>
+    );
+  }
+
   return (
     <div className={`ranked-table-wrap ${compact ? "ranked-table-compact" : ""}`}>
       <table className="ranked-table">
-        <thead><tr><th className="ranked-label-col">เลขข้อ</th><th>ชื่อรายการ</th><th className="ranked-share-col">สัดส่วน</th><th className="ranked-amount-col">ยอดเงิน</th><th className="ranked-count-col">รายการย่อย</th></tr></thead>
+        <thead>
+          <tr>
+            <th className="ranked-label-col" aria-sort={ariaSortFor("label")}><SortHeader sortKey="label">เลขข้อ</SortHeader></th>
+            <th aria-sort={ariaSortFor("name")}><SortHeader sortKey="name">ชื่อรายการ</SortHeader></th>
+            <th className="ranked-share-col" aria-sort={ariaSortFor("share")}><SortHeader sortKey="share">สัดส่วน</SortHeader></th>
+            <th className="ranked-amount-col" aria-sort={ariaSortFor("amount")}><SortHeader sortKey="amount">ยอดเงิน</SortHeader></th>
+            <th className="ranked-count-col" aria-sort={ariaSortFor("childCount")}><SortHeader sortKey="childCount">รายการย่อย</SortHeader></th>
+          </tr>
+        </thead>
         <tbody>
-          {rows.map((row) => {
+          {displayRows.map((row) => {
             return <tr key={row.id} onClick={() => onSelect(row)} tabIndex={0} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onSelect(row); } }}>
               <td className="ranked-label-col"><span className="ranked-label">{row.label}</span></td>
               <td><button className="ranked-name" type="button" onClick={(event) => { event.stopPropagation(); onSelect(row); }}><span>{highlight(row.name)}</span><small><i style={{ background: row.color }} />{row.typeLabel}{row.computed && <em>คำนวณจากรายการย่อย</em>}</small>{row.path && <small className="ranked-path">{row.path}</small>}</button><div className="ranked-mobile-share"><i><b style={{ width: `${Math.min(Math.max(row.share, 0), 100)}%`, background: row.color }} /></i><span>{row.share.toFixed(2)}%</span></div></td>
